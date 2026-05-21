@@ -440,6 +440,9 @@ import authService from '@/services/authService'
 import AppModal from '@/components/common/AppModal.vue'
 import productApi from '@/api/productApi'
 import fileService from '@/services/fileService'
+import apiConfig from '@/api/config'
+
+const API_URL = apiConfig.API_URL
 
 export default {
   name: 'ProductView',
@@ -573,7 +576,7 @@ export default {
       
       try {
         // Fetch conflict history for the current user
-        const response = await fetch(`http://localhost:5000/api/conflicts/user/${this.currentUserId}`, {
+        const response = await fetch(`${API_URL}/conflicts/user/${this.currentUserId}`, {
           headers: {
             'Authorization': `Bearer ${authService.getToken()}`
           }
@@ -603,7 +606,7 @@ export default {
       
       try {
         // Fetch conflict detail based on the conflict ID
-        const response = await fetch(`http://localhost:5000/api/conflicts/detail/${conflictId}`, {
+        const response = await fetch(`${API_URL}/conflicts/detail/${conflictId}`, {
           headers: {
             'Authorization': `Bearer ${authService.getToken()}`
           }
@@ -642,7 +645,7 @@ export default {
     async handleDeleteProduct(productId) {
       try {
         // Make API call to delete product
-        const response = await fetch(`http://localhost:5000/api/products/${productId}`, {
+        const response = await fetch(`${API_URL}/products/${productId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${authService.getToken()}`

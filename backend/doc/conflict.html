@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>喵喵冲突检测</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sakura: {
+                            100: '#FFF9FB',
+                            200: '#FFECF2',
+                            300: '#FFD6E5',
+                            400: '#FFBBD0',
+                            500: '#F8BBD0',
+                            600: '#E1BEE7',
+                        },
+                        mint: {
+                            100: '#E8F5E9',
+                            300: '#C8E6C9',
+                        },
+                        gold: {
+                            200: '#FFECB3',
+                        },
+                        lavender: {
+                            100: '#F3E5F5',
+                            200: '#E1BEE7',
+                            300: '#CE93D8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .float-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+        .cat-card {
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(255, 182, 193, 0.15);
+        }
+        .paw-print {
+            position: relative;
+        }
+        .paw-print::before {
+            content: '🐾';
+            position: absolute;
+            opacity: 0.2;
+            transform: rotate(-15deg) scale(0.8);
+            right: 10px;
+            bottom: 5px;
+        }
+        @keyframes heartbeat {
+            0% { transform: scale(1); }
+            25% { transform: scale(1.1); }
+            50% { transform: scale(1); }
+            75% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .heartbeat {
+            animation: heartbeat 1s infinite;
+        }
+        @keyframes sparkle {
+            0% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.2) rotate(5deg); }
+            50% { transform: scale(1) rotate(0deg); }
+            75% { transform: scale(1.2) rotate(-5deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        .sparkle {
+            animation: sparkle 2s infinite;
+        }
+        .list-paw li {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .list-paw li::before {
+            content: '🐾';
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: 0.8rem;
+            opacity: 0.7;
+            transform: rotate(30deg);
+        }
+    </style>
+</head>
+<body class="bg-sakura-100 min-h-screen pb-20">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm p-4 sticky top-0 z-10">
+        <div class="flex items-center justify-between max-w-4xl mx-auto">
+            <button onclick="history.back()" class="text-gray-700 hover:text-gray-900 transition-colors">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h1 class="text-lg font-semibold text-red-500 flex items-center">
+                <i class="fas fa-paw mr-2 text-red-400"></i>
+                冲突检测
+            </h1>
+            <button class="text-gray-700 hover:text-gray-900 transition-colors">
+                <i class="fas fa-share-alt"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="p-4 max-w-4xl mx-auto">
+        <!-- Selected Products Section -->
+        <div class="bg-white rounded-xl shadow-sm p-5 mb-6 transition-shadow hover:shadow-md">
+            <h2 class="text-lg font-medium mb-4 flex items-center text-gray-800">
+                <i class="fas fa-shopping-basket text-red-400 mr-2"></i>
+                你选择了这些产品喵～
+            </h2>
+            <div class="space-y-4">
+                <div class="flex items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <img src="https://images.unsplash.com/photo-1556229010-6c3f2c9ca5f8?w=100" 
+                         alt="COSRX 低pH洁面啫喱" 
+                         class="w-14 h-14 rounded-xl object-cover shadow-sm">
+                    <div class="flex-1 ml-4">
+                        <h3 class="text-sm font-medium text-gray-800">COSRX 低pH洁面啫喱</h3>
+                        <div class="flex items-center mt-1">
+                            <span class="text-xs text-gray-500">温和无泡洁面乳</span>
+                        </div>
+                    </div>
+                    <button class="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-gray-100">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="flex items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=100" 
+                         alt="The Ordinary 维生素C精华" 
+                         class="w-14 h-14 rounded-xl object-cover shadow-sm">
+                    <div class="flex-1 ml-4">
+                        <h3 class="text-sm font-medium text-gray-800">The Ordinary 维生素C精华</h3>
+                        <div class="flex items-center mt-1">
+                            <span class="text-xs text-gray-500">高浓度抗氧化精华</span>
+                        </div>
+                    </div>
+                    <button class="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-gray-100">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Two Column Layout for Results and Suggestions -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Analysis Results Section -->
+            <div class="bg-white rounded-xl shadow-sm p-5 transition-shadow hover:shadow-md">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-lg font-medium flex items-center text-gray-800">
+                        <i class="fas fa-search-plus text-red-400 mr-2"></i>
+                        检测结果
+                    </h2>
+                    <div class="flex items-center text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
+                        <i class="fas fa-clock mr-1"></i>
+                        刚刚更新
+                    </div>
+                </div>
+                
+                <!-- High Risk Conflicts -->
+                <div class="mb-6">
+                    <div class="flex items-center mb-3">
+                        <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                        <h3 class="text-sm font-medium text-gray-700">成分冲突</h3>
+                    </div>
+                    <div class="p-5 bg-red-50 rounded-xl relative border border-red-100 transition-all hover:border-red-200">
+                        <div class="flex items-start">
+                            <div class="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center mr-4 shrink-0">
+                                <i class="fas fa-exclamation-triangle text-red-400 heartbeat"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-800 mb-2">维生素C + 烟酰胺</h4>
+                                <ul class="list-paw text-xs text-gray-600 space-y-2">
+                                    <li>这两种成分混在一起会互相把对方吃掉喵～效果都没啦！</li>
+                                    <li>可能产生不稳定的化学反应，刺激皮肤</li>
+                                    <li>混合后会改变产品pH值，降低吸收效果</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Safe Combinations -->
+                <div>
+                    <div class="flex items-center mb-3">
+                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                        <h3 class="text-sm font-medium text-gray-700">和谐组合</h3>
+                    </div>
+                    <div class="p-5 bg-green-50 rounded-xl relative border border-green-100 transition-all hover:border-green-200">
+                        <div class="flex items-start">
+                            <div class="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center mr-4 shrink-0">
+                                <i class="fas fa-check text-green-500"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-800 mb-2">神经酰胺 + 玻尿酸</h4>
+                                <p class="text-xs text-gray-600">这两个成分是好朋友，一起使用能锁住更多水分，皮肤会很开心！</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usage Suggestions Section -->
+            <div class="bg-white rounded-xl shadow-sm p-5 transition-shadow hover:shadow-md">
+                <div class="flex items-center mb-5">
+                    <h2 class="text-lg font-medium flex items-center text-gray-800">
+                        <i class="fas fa-lightbulb text-amber-400 mr-2 sparkle"></i>
+                        使用建议
+                    </h2>
+                </div>
+
+                <!-- Usage Recommendations -->
+                <div>
+                    <div class="p-5 bg-blue-50 rounded-xl relative border border-blue-100 transition-all hover:border-blue-200">
+                        <div class="flex items-start mb-4">
+                            <div class="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center mr-4 shrink-0">
+                                <i class="fas fa-magic text-blue-400"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-800 mb-2">AI智能推荐</h4>
+                                <p class="text-xs text-gray-600 mb-3">根据成分分析，为你定制最佳使用方案</p>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 text-xs shadow-sm mb-4">
+                            <p class="font-medium mb-2 text-gray-800">🔄 产品搭配建议：</p>
+                            <div class="mb-3">
+                                <p class="text-red-500 font-medium ml-4 mb-1">❌ 不可一起使用：</p>
+                                <p class="text-gray-600 ml-6">The Ordinary 维生素C精华 + 烟酰胺产品</p>
+                            </div>
+                            <div class="mb-3">
+                                <p class="text-green-500 font-medium ml-4 mb-1">✅ 可以一起使用：</p>
+                                <p class="text-gray-600 ml-6">COSRX 低pH洁面啫喱 + 任何精华产品</p>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 text-xs shadow-sm">
+                            <p class="font-medium mb-2 text-gray-800">🌞 早晨护肤：</p>
+                            <p class="text-gray-600 mb-3 ml-4">COSRX 低pH洁面啫喱 → 烟酰胺产品</p>
+                            <p class="font-medium mb-2 text-gray-800">🌙 晚间护肤：</p>
+                            <p class="text-gray-600 ml-4">COSRX 低pH洁面啫喱 → The Ordinary 维生素C精华</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Action Buttons -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-5 shadow-sm">
+        <div class="flex space-x-4 max-w-4xl mx-auto">
+            <button class="flex-1 bg-blue-500 text-white py-3.5 rounded-xl font-medium hover:bg-blue-600 transition-all shadow-sm hover:shadow flex items-center justify-center">
+                <i class="fas fa-save mr-2"></i>
+                保存分析结果
+            </button>
+            <button class="flex-1 bg-gray-50 text-gray-700 py-3.5 rounded-xl font-medium hover:bg-gray-100 transition-all border border-gray-200 flex items-center justify-center" onclick="history.back()">
+                <i class="fas fa-arrow-left mr-2"></i>
+                返回猫窝
+            </button>
+        </div>
+    </div>
+
+</body>
+</html>

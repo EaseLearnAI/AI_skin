@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI肌肤检测报告</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sakura: {
+                            50: '#FEF7F0',
+                            100: '#FFF9FB',
+                            200: '#FFECF2',
+                            300: '#FFD6E5',
+                            400: '#FFBBD0',
+                            500: '#F8BBD0',
+                            600: '#E1BEE7',
+                            700: '#C48B9F',
+                            800: '#A67C8A',
+                            900: '#8B5A6B'
+                        },
+                        mint: {
+                            50: '#F0FDF4',
+                            100: '#E8F5E9',
+                            200: '#D1FAE5',
+                            300: '#C8E6C9',
+                            400: '#86EFAC',
+                            500: '#4ADE80',
+                            600: '#22C55E'
+                        },
+                        gold: {
+                            100: '#FEF3C7',
+                            200: '#FFECB3',
+                            300: '#FDE68A',
+                            400: '#FBBF24',
+                            500: '#F59E0B'
+                        },
+                        ocean: {
+                            50: '#F0F9FF',
+                            100: '#E0F2FE',
+                            200: '#BAE6FD',
+                            300: '#7DD3FC',
+                            400: '#38BDF8',
+                            500: '#0EA5E9',
+                            600: '#0284C7'
+                        }
+                    },
+                    fontFamily: {
+                        'sans': ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Segoe UI', 'Roboto', 'sans-serif']
+                    },
+                    borderRadius: {
+                        'xl': '1rem',
+                        '2xl': '1.5rem',
+                        '3xl': '2rem'
+                    },
+                    boxShadow: {
+                        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
+                        'medium': '0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 30px -5px rgba(0, 0, 0, 0.04)',
+                        'strong': '0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 20px 50px -10px rgba(0, 0, 0, 0.1)'
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* iPhone 16 Pro Max 适配 */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            max-width: 430px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #FEF7F0 0%, #FFF9FB 100%);
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        /* 设备边框模拟 */
+        .device-frame {
+            border-radius: 2.5rem;
+            overflow: hidden;
+            box-shadow: 0 0 0 8px #1a1a1a, 0 0 0 10px #333, 0 20px 40px rgba(0,0,0,0.3);
+            background: #000;
+            padding: 2px;
+        }
+        
+        .screen-content {
+            border-radius: 2.3rem;
+            overflow: hidden;
+            background: linear-gradient(135deg, #FEF7F0 0%, #FFF9FB 100%);
+        }
+        
+        /* 动画效果 */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        @keyframes progressFill {
+            from { width: 0%; }
+        }
+        
+        /* 卡片样式 */
+        .modern-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .modern-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            border-color: rgba(248, 187, 208, 0.3);
+        }
+        
+        /* 渐变背景 */
+        .gradient-bg {
+            background: linear-gradient(135deg, #F8BBD0 0%, #E1BEE7 50%, #C8E6C9 100%);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #F8BBD0, #E1BEE7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* 进度环样式 */
+        .progress-ring {
+            transform: rotate(-90deg);
+            filter: drop-shadow(0 4px 8px rgba(248, 187, 208, 0.3));
+        }
+        
+        .progress-ring circle {
+            transition: stroke-dashoffset 2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* 数据可视化 */
+        .data-viz {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .data-viz::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: translateX(-100%);
+            animation: shimmer 3s infinite;
+        }
+        
+        /* 进度条增强 */
+        .enhanced-progress {
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            animation: progressFill 1.5s ease-out;
+        }
+        
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        /* 状态指示器 */
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            position: relative;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            opacity: 0.3;
+            animation: pulse 2s infinite;
+        }
+        
+        /* 按钮样式 */
+        .modern-button {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .modern-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .modern-button:active {
+            transform: translateY(0);
+        }
+        
+        /* 图标动画 */
+        .icon-bounce {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        /* 分数动画 */
+        .score-animation {
+            animation: scaleIn 1s ease-out;
+        }
+        
+        /* 标签样式 */
+        .modern-tag {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .modern-tag:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(1.05);
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 430px) {
+            body {
+                max-width: 100%;
+            }
+            
+            .device-frame {
+                border-radius: 0;
+                box-shadow: none;
+                padding: 0;
+            }
+            
+            .screen-content {
+                border-radius: 0;
+            }
+        }
+        
+        /* 滚动条隐藏 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* 玻璃拟态增强 */
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        
+        /* 动态阴影 */
+        .dynamic-shadow {
+            transition: box-shadow 0.3s ease;
+        }
+        
+        .dynamic-shadow:hover {
+            box-shadow: 0 20px 40px rgba(248, 187, 208, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-sakura-100 min-h-screen pb-20">
+    
+    <div class="device-frame">
+        
+        <div class="screen-content">
+            <!-- Status Bar -->
+             
+
+    <!-- Header -->
+     
+
+    
+    <!-- Main Content -->
+    <main class="p-4">
+
+        <!-- Overall Health Score -->
+
+
+
+
+        <!-- Overall Skin Status -->
+        <div class="modern-card p-6 mb-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                    <img src="D:\AI\AI_skin_car\test2\设置.svg" class="w-6 h-6 mr-3" alt="icon">
+                    皮肤状态总览
+                </h3>
+                <div class="text-xs text-gray-500">
+                    <span>8项指标检测</span>
+                </div>
+            </div>
+            
+            <!-- Overall Assessment -->
+            <div class="bg-gray-50 rounded-lg p-4 mb-6 border-l-4 border-sakura-400">
+                <p class="text-sm text-gray-700">
+                    <span class="font-semibold text-sakura-600">综合评估：</span>
+                    皮肤整体状态良好，有2个问题需要轻度关注。
+                </p>
+            </div>
+            
+            <!-- Skin Issues List -->
+            <div class="space-y-0">
+                <!-- Blackheads -->
+                <div class="flex items-center justify-between py-4 border-b border-gray-100">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                            <img src="D:\AI\AI_skin_car\test2\设置.svg" class="w-4 h-4" alt="icon">
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm">黑头情况</h4>
+                            <p class="text-xs text-gray-500">鼻翼、下巴</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-2.5 h-2.5 bg-yellow-500 rounded-full mr-2"></div>
+                        <span class="text-sm font-medium text-yellow-600">少量</span>
+                    </div>
+                </div>
+
+                <!-- Acne -->
+                <div class="flex items-center justify-between py-4 border-b border-gray-100">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                            <img src="D:\AI\AI_skin_car\test2\设置.svg" class="w-4 h-4" alt="icon">
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm">痘痘情况</h4>
+                            <p class="text-xs text-gray-500">额头、下巴粉刺</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-2.5 h-2.5 bg-yellow-500 rounded-full mr-2"></div>
+                        <span class="text-sm font-medium text-yellow-600">少量</span>
+                    </div>
+                </div>
+
+                <!-- Pores -->
+                <div class="flex items-center justify-between py-4 border-b border-gray-100">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                            <img src="D:\AI\AI_skin_car\test2\设置.svg" class="w-4 h-4" alt="icon">
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm">毛孔状态</h4>
+                            <p class="text-xs text-gray-500">T区粗大</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-2.5 h-2.5 bg-orange-500 rounded-full mr-2"></div>
+                        <span class="text-sm font-medium text-orange-600">中度</span>
+                    </div>
+                </div>
+
+                <!-- Skin Tone Evenness -->
+                <div class="flex items-center justify-between py-4 border-b border-gray-100">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                            <img src="D:\AI\AI_skin_car\test2\设置.svg" class="w-4 h-4" alt="icon">
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm">肤色均匀度</h4>
+                            <p class="text-xs text-gray-500">较为均匀</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-2.5 h-2.5 bg-green-500 rounded-full mr-2"></div>
+                        <span class="text-sm font-medium text-green-600">良好</span>
+                    </div>
+                </div>
+
+                <!-- Redness -->
+                <div class="flex items-center justify-between py-4 border-b border-gray-100">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                            <img src="D:\AI\AI_skin_car\test2\设置.svg" class="w-4 h-4" alt="icon">
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm">泛红情况</h4>
+                            <p class="text-xs text-gray-500">轻微敏感性泛红</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-2.5 h-2.5 bg-yellow-500 rounded-full mr-2"></div>
+                        <span class="text-sm font-medium text-yellow-600">轻度</span>
+                    </div>
+                </div>
+
+                <!-- Hyperpigmentation -->
+                <div class="flex items-center justify-between py-4 border-b border-gray-100">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                            <img src="D:\AI\AI_skin_car\test2\设置.svg" class="w-4 h-4" alt="icon">
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm">色素沉着</h4>
+                            <p class="text-xs text-gray-500">少量晒斑痘印</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-2.5 h-2.5 bg-yellow-500 rounded-full mr-2"></div>
+                        <span class="text-sm font-medium text-yellow-600">轻度</span>
+                    </div>
+                </div>
+                
+                <!-- Fine Lines -->
+                <div class="flex items-center justify-between py-4 border-b border-gray-100">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                            <img src="D:\AI\AI_skin_car\test2\设置.svg" class="w-4 h-4" alt="icon">
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm">细纹状况</h4>
+                            <p class="text-xs text-gray-500">眼周轻微细纹</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-2.5 h-2.5 bg-green-500 rounded-full mr-2"></div>
+                        <span class="text-sm font-medium text-green-600">良好</span>
+                    </div>
+                </div>
+                
+                <!-- Sensitivity -->
+                <div class="flex items-center justify-between py-4">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                            <img src="D:\AI\AI_skin_car\test2\设置.svg" class="w-4 h-4" alt="icon">
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 text-sm">敏感程度</h4>
+                            <p class="text-xs text-gray-500">轻度敏感肌</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-2.5 h-2.5 bg-yellow-500 rounded-full mr-2"></div>
+                        <span class="text-sm font-medium text-yellow-600">轻度</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Recommendations -->
+
+
+
+        
+        <!-- 额外功能按钮 -->
+       
+    </main>
+
+    <!-- Bottom Navigation -->
+
+    
+        </div>
+    </div>
+    
+    <script src="navigation.js"></script>
+
+    <script>
+        // 模拟后端返回的皮肤分析数据
+        const skinAnalysisData = {
+            "skinType": {
+                "type": "混合性皮肤",
+                "subtype": "混油性",
+                "basis": "T区（额头、鼻梁）呈现明显光泽度，毛孔粗大；U区（脸颊、下巴）略显干燥，皮肤纹理细腻"
+            },
+            "blackheads": {
+                "exists": true,
+                "severity": "少量",
+                "distribution": ["鼻翼", "下巴"]
+            },
+            "acne": {
+                "exists": true,
+                "count": "少量",
+                "types": ["粉刺"],
+                "activity": "轻度活跃",
+                "distribution": ["额头", "下巴"]
+            },
+            "pores": {
+                "enlarged": true,
+                "severity": "中度",
+                "distribution": ["T区"]
+            },
+            "otherIssues": {
+                "redness": {
+                    "exists": true,
+                    "severity": "轻度",
+                    "distribution": ["鼻翼", "脸颊"]
+                },
+                "hyperpigmentation": {
+                    "exists": false,
+                    "types": [],
+                    "distribution": []
+                },
+                "fineLines": {
+                    "exists": false,
+                    "severity": "无",
+                    "distribution": []
+                },
+                "sensitivity": {
+                    "exists": false,
+                    "signs": []
+                },
+                "skinToneEvenness": {
+                    "score": 7,
+                    "description": "较为均匀，T区略显暗沉"
+                }
+            },
+            "overallAssessment": {
+                "healthScore": 75,
+                "summary": "混合偏油性皮肤，T区油脂分泌旺盛伴随毛孔粗大，局部存在少量闭口型粉刺及黑头，肤色均匀度良好但需加强控油护理",
+                "recommendations": [
+                    "使用温和氨基酸洁面产品早晚清洁",
+                    "每周1-2次化学去角质（如水杨酸棉片）疏通毛孔",
+                    "选择含烟酰胺成分的保湿霜平衡水油"
+                ],
+                "skinCondition": "需要改善"
+            }
+        };
+
+        // 健康评分圆环动画
+        function animateHealthScore() {
+            const circle = document.getElementById('healthScoreCircle');
+            const scoreText = document.querySelector('.health-score-number');
+            const score = skinAnalysisData.overallAssessment.healthScore;
+            
+            if (!circle || !scoreText) return;
+            
+            const radius = 45;
+            const circumference = radius * 2 * Math.PI;
+            const offset = circumference - (score / 100 * circumference);
+            
+            circle.style.strokeDasharray = `${circumference} ${circumference}`;
+            circle.style.strokeDashoffset = circumference;
+            
+            // 动画效果
+            setTimeout(() => {
+                circle.style.transition = 'stroke-dashoffset 2.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                circle.style.strokeDashoffset = offset;
+            }, 800);
+            
+            // 数字动画
+            let currentScore = 0;
+            const increment = score / 80; // 2.5秒内完成
+            const timer = setInterval(() => {
+                currentScore += increment;
+                if (currentScore >= score) {
+                    currentScore = score;
+                    clearInterval(timer);
+                }
+                scoreText.textContent = Math.round(currentScore);
+            }, 30);
+        }
+
+        // 获取严重程度对应的百分比
+        function getSeverityPercentage(severity) {
+            const severityMap = {
+                '无': 0,
+                '轻度': 25,
+                '少量': 30,
+                '中度': 60,
+                '大量': 80,
+                '严重': 90
+            };
+            return severityMap[severity] || 0;
+        }
+
+        // 获取严重程度对应的颜色
+        function getSeverityColor(severity) {
+            const colorMap = {
+                '无': 'from-gray-300 to-gray-400',
+                '轻度': 'from-green-400 to-green-500',
+                '少量': 'from-yellow-400 to-orange-400',
+                '中度': 'from-orange-400 to-orange-500',
+                '大量': 'from-red-400 to-red-500',
+                '严重': 'from-red-500 to-red-600'
+            };
+            return colorMap[severity] || 'from-gray-300 to-gray-400';
+        }
+
+        // 更新进度条
+        function updateProgressBars() {
+            // 更新所有进度条
+            const progressBars = document.querySelectorAll('.enhanced-progress-fill');
+            
+            progressBars.forEach((bar, index) => {
+                let percentage = 0;
+                let colorClass = '';
+                
+                switch(index) {
+                    case 0: // 黑头
+                        if (skinAnalysisData.blackheads.exists) {
+                            percentage = getSeverityPercentage(skinAnalysisData.blackheads.severity);
+                            colorClass = getSeverityColor(skinAnalysisData.blackheads.severity);
+                        }
+                        break;
+                    case 1: // 痘痘
+                        if (skinAnalysisData.acne.exists) {
+                            percentage = getSeverityPercentage(skinAnalysisData.acne.count);
+                            colorClass = getSeverityColor(skinAnalysisData.acne.count);
+                        }
+                        break;
+                    case 2: // 毛孔
+                        if (skinAnalysisData.pores.enlarged) {
+                            percentage = getSeverityPercentage(skinAnalysisData.pores.severity);
+                            colorClass = getSeverityColor(skinAnalysisData.pores.severity);
+                        }
+                        break;
+                    case 3: // 肤色均匀度
+                        percentage = (skinAnalysisData.otherIssues.skinToneEvenness.score / 10) * 100;
+                        colorClass = percentage > 70 ? 'from-green-400 to-green-500' : 
+                                   percentage > 50 ? 'from-yellow-400 to-orange-400' : 
+                                   'from-red-400 to-red-500';
+                        break;
+                }
+                
+                // 动画效果
+                setTimeout(() => {
+                    bar.style.width = `${percentage}%`;
+                    bar.className = `enhanced-progress-fill bg-gradient-to-r ${colorClass} h-full rounded-full transition-all duration-1000 ease-out`;
+                }, 1000 + (index * 200));
+            });
+            
+            // 更新其他问题的进度条
+            const otherIssuesBars = document.querySelectorAll('.other-issues .enhanced-progress-fill');
+            const otherIssuesData = [
+                skinAnalysisData.otherIssues.redness,
+                skinAnalysisData.otherIssues.hyperpigmentation,
+                skinAnalysisData.otherIssues.fineLines,
+                skinAnalysisData.otherIssues.sensitivity
+            ];
+            
+            otherIssuesBars.forEach((bar, index) => {
+                const issueData = otherIssuesData[index];
+                let percentage = 0;
+                let colorClass = 'from-gray-300 to-gray-400';
+                
+                if (issueData && issueData.exists) {
+                    percentage = getSeverityPercentage(issueData.severity || '轻度');
+                    colorClass = getSeverityColor(issueData.severity || '轻度');
+                }
+                
+                setTimeout(() => {
+                    bar.style.width = `${percentage}%`;
+                    bar.className = `enhanced-progress-fill bg-gradient-to-r ${colorClass} h-full rounded-full transition-all duration-1000 ease-out`;
+                }, 1500 + (index * 150));
+            });
+        }
+
+        // 添加卡片悬停效果
+        function addHoverEffects() {
+            const cards = document.querySelectorAll('.modern-card');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-8px) scale(1.02)';
+                    this.style.boxShadow = '0 25px 50px rgba(0, 0, 0, 0.15)';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                    this.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.1)';
+                });
+            });
+            
+            // 添加数据可视化卡片的特殊效果
+            const dataVizCards = document.querySelectorAll('.data-viz');
+            dataVizCards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    const progressBars = this.querySelectorAll('.enhanced-progress-fill');
+                    progressBars.forEach(bar => {
+                        bar.style.filter = 'brightness(1.1) saturate(1.2)';
+                    });
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    const progressBars = this.querySelectorAll('.enhanced-progress-fill');
+                    progressBars.forEach(bar => {
+                        bar.style.filter = 'brightness(1) saturate(1)';
+                    });
+                });
+            });
+        }
+
+        // 添加按钮点击效果
+        function addButtonEffects() {
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    // 添加点击动画
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 150);
+                    
+                    // 创建涟漪效果
+                    const rect = this.getBoundingClientRect();
+                    const size = Math.max(rect.width, rect.height);
+                    const x = e.clientX - rect.left - size / 2;
+                    const y = e.clientY - rect.top - size / 2;
+                    
+                    const ripple = document.createElement('div');
+                    ripple.style.cssText = `
+                        position: absolute;
+                        width: ${size}px;
+                        height: ${size}px;
+                        left: ${x}px;
+                        top: ${y}px;
+                        background: rgba(255, 255, 255, 0.4);
+                        border-radius: 50%;
+                        transform: scale(0);
+                        animation: modernRipple 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+                        pointer-events: none;
+                        z-index: 10;
+                    `;
+                    
+                    this.appendChild(ripple);
+                    
+                    setTimeout(() => {
+                        ripple.remove();
+                    }, 800);
+                });
+            });
+        }
+        
+        // 添加滚动视差效果
+        function addScrollEffects() {
+            const cards = document.querySelectorAll('.modern-card');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            });
+            
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(30px)';
+                card.style.transition = `opacity 0.6s ease-out ${index * 0.1}s, transform 0.6s ease-out ${index * 0.1}s`;
+                observer.observe(card);
+            });
+        }
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 延迟执行动画，让页面先渲染
+            setTimeout(() => {
+                animateHealthScore();
+                updateProgressBars();
+                addHoverEffects();
+                addButtonEffects();
+                addScrollEffects();
+            }, 500);
+        });
+
+        // 添加CSS动画
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes modernRipple {
+                to {
+                    transform: scale(4);
+                    opacity: 0;
+                }
+            }
+            
+            @keyframes ripple {
+                to {
+                    transform: scale(4);
+                    opacity: 0;
+                }
+            }
+            
+            .modern-card {
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            
+            .enhanced-progress-fill {
+                transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            
+            .data-viz:hover .enhanced-progress-fill {
+                animation: progressPulse 2s ease-in-out infinite;
+            }
+            
+            @keyframes progressPulse {
+                0%, 100% { filter: brightness(1) saturate(1); }
+                50% { filter: brightness(1.2) saturate(1.3); }
+            }
+            
+            .icon-bounce {
+                animation: iconBounce 2s ease-in-out infinite;
+            }
+            
+            @keyframes iconBounce {
+                0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+                40% { transform: translateY(-8px); }
+                60% { transform: translateY(-4px); }
+            }
+            
+            .gradient-text {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            
+            .modern-tag {
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            
+            .health-score-number {
+                font-feature-settings: 'tnum';
+                font-variant-numeric: tabular-nums;
+            }
+            
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(30px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
+            .device-frame {
+                animation: fadeInUp 0.8s ease-out;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

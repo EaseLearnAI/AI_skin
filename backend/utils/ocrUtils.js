@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { VISION_MODEL } = require('../config/aiModels');
+const { OCR_MODEL } = require('../config/aiModels');
 require('dotenv').config();
 
 // 从环境变量中获取 API 密钥
@@ -31,7 +31,7 @@ const extractProductInfo = async (imageUrl) => {
     
     // 设置API请求参数
     const data = {
-      model: VISION_MODEL,
+      model: OCR_MODEL,
       messages: [
         {
           role: 'user',

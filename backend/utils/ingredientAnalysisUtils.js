@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { TEXT_MODEL } = require('../config/aiModels');
 require('dotenv').config();
 
 // 从环境变量中获取 API 密钥
@@ -54,7 +55,7 @@ const analyzeIngredients = async (productName, ingredients) => {
     
     // 设置API请求参数
     const data = {
-      model: 'qwen-turbo-latest',
+      model: TEXT_MODEL,
       messages: [
         {
           role: 'user',
@@ -127,4 +128,4 @@ const analyzeIngredients = async (productName, ingredients) => {
 
 module.exports = {
   analyzeIngredients
-}; 
+};

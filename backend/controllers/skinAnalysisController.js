@@ -1,4 +1,5 @@
 const SkinAnalysis = require('../models/skinAnalysisModel');
+const { VISION_MODEL } = require('../config/aiModels');
 const { uploadToOSS } = require('../utils/ossUtils');
 const { analyzeSkinCondition, validateAnalysisResult } = require('../utils/skinAnalysisUtils');
 const multer = require('multer');
@@ -134,7 +135,7 @@ const uploadAndAnalyzeSkin = async (req, res) => {
           overallAssessment: analysisResult.data.overallAssessment,
           rawAnalysisResult: analysisResult.rawContent,
           analysisConfig: {
-            model: 'qwen2.5-vl-72b-instruct',
+            model: VISION_MODEL,
             analysisDate: new Date(),
             processingTime: analysisResult.processingTime
           }
@@ -426,4 +427,4 @@ module.exports = {
   deleteSkinAnalysis,
   getSkinAnalysisStats,
   getLatestSkinAnalysis
-}; 
+};

@@ -1,4 +1,5 @@
 const OpenAI = require("openai");
+const { VISION_MODEL } = require('../config/aiModels');
 require('dotenv').config();
 
 // 初始化 OpenAI 客户端，使用阿里云的兼容模式
@@ -8,7 +9,7 @@ const openai = new OpenAI({
 });
 
 /**
- * 调用qwen2.5-vl-72b-instruct模型分析皮肤状态
+ * 调用统一视觉模型分析皮肤状态
  * @param {string} imageUrl - 图片URL
  * @returns {Promise<Object>} - 分析结果
  */
@@ -82,11 +83,11 @@ const analyzeSkinCondition = async (imageUrl) => {
 请仔细观察图片中的皮肤细节，提供专业、准确的分析结果。注意：请只返回JSON格式的数据，不要包含其他文字。
 `;
 
-    console.log('🤖 发送请求到qwen2.5-vl-72b-instruct模型...');
+    console.log(`🤖 发送请求到${VISION_MODEL}模型...`);
     
     // 使用非流式调用，获得快速JSON响应
     const response = await openai.chat.completions.create({
-      model: 'qwen2.5-vl-72b-instruct',
+      model: VISION_MODEL,
       messages: [
         {
           role: "user",
@@ -320,4 +321,4 @@ const getNestedValue = (obj, path) => {
 module.exports = {
   analyzeSkinCondition,
   validateAnalysisResult
-}; 
+};

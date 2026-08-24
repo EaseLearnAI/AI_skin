@@ -122,7 +122,7 @@ const loginTestUser = async () => {
  * 测试图片上传到OSS并分析皮肤状态（快速JSON输出版本）
  */
 const testSkinAnalysis = async () => {
-  log.step('测试皮肤状态分析 (qwen2.5-vl-72b-instruct 模型)');
+  log.step('测试皮肤状态分析 (qwen3-vl-plus 模型)');
   
   try {
     // 创建表单数据
@@ -130,7 +130,7 @@ const testSkinAnalysis = async () => {
     formData.append('faceImage', fs.createReadStream(TEST_IMAGE_PATH));
     
     log.info('开始上传图片并分析...');
-    log.info('模型: qwen2.5-vl-72b-instruct (快速JSON响应)');
+    log.info('模型: qwen3-vl-plus (JSON响应)');
     
     const startTime = Date.now();
     
@@ -334,7 +334,7 @@ const performanceTest = async () => {
  * 主测试函数
  */
 const runTests = async () => {
-  console.log('🧪'.rainbow + ' AI皮肤分析功能测试 (qwen2.5-vl-72b-instruct)'.rainbow.bold);
+  console.log('🧪'.rainbow + ' AI皮肤分析功能测试 (qwen3-vl-plus)'.rainbow.bold);
   console.log('='.repeat(80).gray);
   
   try {
@@ -392,4 +392,4 @@ module.exports = {
   testGetAnalysisHistory,
   testGetStats,
   performanceTest
-}; 
+};

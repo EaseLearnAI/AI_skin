@@ -1,11 +1,8 @@
-require('dotenv').config();
-
-const TEXT_MODEL = process.env.AI_TEXT_MODEL || 'qwen3.7-flash';
-const VISION_MODEL = process.env.AI_VISION_MODEL || 'qwen3-vl-plus';
-const OCR_MODEL = process.env.AI_OCR_MODEL || 'qwen-vl-ocr-latest';
+// Compatibility export for older scripts. Runtime task mapping lives in src/config/config.
+const { ai } = require('../src/config/config').loadConfig();
 
 module.exports = {
-  TEXT_MODEL,
-  VISION_MODEL,
-  OCR_MODEL
+  TEXT_MODEL: ai.textModel,
+  VISION_MODEL: ai.visionModel,
+  OCR_MODEL: ai.ocrModel
 };

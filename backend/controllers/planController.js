@@ -3,6 +3,7 @@ const Plan = require('../models/planModel');
 const Product = require('../models/productModel');
 const SkinAnalysis = require('../models/skinAnalysisModel');
 const User = require('../models/userModel');
+const { TEXT_MODEL } = require('../config/aiModels');
 require('dotenv').config();
 
 // 从环境变量中获取 API 密钥
@@ -133,7 +134,7 @@ ${productList.map((p, i) => `${i+1}. ${p.name} - ${p.label || '无标签'}`).joi
     const response = await axios.post(
       'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
       {
-        model: 'qwen-turbo-latest',
+        model: TEXT_MODEL,
         messages: [
           { role: 'user', content: prompt }
         ]
@@ -294,4 +295,4 @@ module.exports = {
   getUserPlans,
   getPlan,
   deletePlan
-}; 
+};

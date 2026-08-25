@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { VISION_MODEL } = require('../config/aiModels');
 
 const skinAnalysisSchema = new mongoose.Schema({
   // 关联用户
@@ -156,7 +157,7 @@ const skinAnalysisSchema = new mongoose.Schema({
   analysisConfig: {
     model: {
       type: String,
-      default: 'qwen2.5-vl-72b-instruct'
+      default: VISION_MODEL
     },
     analysisDate: {
       type: Date,
@@ -174,4 +175,4 @@ skinAnalysisSchema.index({ 'overallAssessment.healthScore': -1 });
 
 const SkinAnalysis = mongoose.model('SkinAnalysis', skinAnalysisSchema);
 
-module.exports = SkinAnalysis; 
+module.exports = SkinAnalysis;

@@ -1,6 +1,7 @@
 const axios = require('axios');
 const Conflict = require('../models/conflictModel');
 const Product = require('../models/productModel');
+const { TEXT_MODEL } = require('../config/aiModels');
 require('dotenv').config();
 
 // 从环境变量中获取 API 密钥
@@ -101,7 +102,7 @@ ${productInfo.map((p, i) => `产品${i+1}: ${p.name}
     const response = await axios.post(
       'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
       {
-        model: 'qwen-turbo-latest',
+        model: TEXT_MODEL,
         messages: [
           { role: 'user', content: prompt }
         ]
@@ -341,4 +342,4 @@ module.exports = {
   deleteConflict,
   getUserConflictsSummary,
   getConflictById
-}; 
+};

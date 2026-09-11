@@ -18,6 +18,14 @@ const createSkinAnalysisRouter = ({ authService, skinAnalysisService }) => {
   }) })), wrap(controller.list));
   router.get('/stats', wrap(controller.stats));
   router.get('/latest', wrap(controller.latest));
+  router.patch('/:id/context', validate(envelope({
+    params: Joi.object({ id: objectId.required() }),
+    body: Joi.object({
+      condition: Joi.string().trim().allow('').max(200),
+      light: Joi.string().trim().allow('').max(200),
+      feelings: Joi.array().items(Joi.string().trim().min(1).max(100)).max(20).unique()
+    }).min(1)
+  })), wrap(controller.updateContext));
   router.route('/:id')
     .get(validate(envelope({ params: Joi.object({ id: objectId.required() }) })), wrap(controller.get))
     .delete(validate(envelope({ params: Joi.object({ id: objectId.required() }) })), wrap(controller.remove));

@@ -37,6 +37,8 @@ const userSchema = new mongoose.Schema({
   },
   email: { type: String, trim: true, lowercase: true },
   avatar: String,
+  // Missing means legacy selection has not been initialized; null means explicitly inactive.
+  activePlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan', select: false },
   gender: { type: String, enum: ['male', 'female'] },
   age: { type: Number, min: 13, max: 120 },
   profileStatus: {

@@ -8,6 +8,8 @@ const { ApiError } = require('../../middlewares/error');
 const createAliOssClient = (config) => {
   if (!config.configured) return null;
   return new OSS({
+    // Native iOS ATS requires HTTPS for uploads and generated signed image URLs.
+    secure: true,
     region: config.region,
     accessKeyId: config.accessKeyId,
     accessKeySecret: config.accessKeySecret,
@@ -28,6 +30,9 @@ const createObjectStorageProvider = ({
   fsPromises = fs,
   now = Date.now
 }) => {
+  const cleanupTempFile = async (filePath) => {
+    try { await fsPromises.unlink(filePath); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  };
   if (!client) {
     const unavailable = async () => { throw new ApiError(503, '对象存储尚未配置', 'STORAGE_NOT_CONFIGURED'); };
     return {
@@ -36,9 +41,7 @@ const createObjectStorageProvider = ({
       deleteObject: unavailable,
       getPrivateUrl: unavailable,
       getProductUrl: unavailable,
-      cleanupTempFile: async (filePath) => {
-        try { await fsPromises.unlink(filePath); } catch (error) { if (error.code !== 'ENOENT') throw error; }
-      }
+      cleanupTempFile
     };
   }
 
@@ -71,15 +74,9 @@ const createObjectStorageProvider = ({
     },
     getPrivateUrl: (key) => client.signatureUrl(key, { expires: faceSignedUrlExpiresSeconds }),
     getProductUrl: (key, currentUrl) => (
-      productImagesPublic ? currentUrl : client.signatureUrl(key, { expires: 3600 })
+      productImagesPublic ? currentUrl?.replace(/^http:\/\//, 'https://') : client.signatureUrl(key, { expires: 3600 })
     ),
-    cleanupTempFile: async (filePath) => {
-      try {
-        await fsPromises.unlink(filePath);
-      } catch (error) {
-        if (error.code !== 'ENOENT') throw error;
-      }
-    }
+    cleanupTempFile
   };
 };
 

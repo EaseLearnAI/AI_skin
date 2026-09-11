@@ -1,10 +1,12 @@
 const fs = require('fs/promises');
 const path = require('path');
+const { createHash } = require('crypto');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
 const { createRuntime } = require('../../src');
 
 const describeReal = process.env.RUN_REAL_E2E === '1' ? describe : describe.skip;
+if (process.env.RUN_REAL_E2E === '1') require('dotenv').config({ quiet: true });
 
 describeReal('real local backend E2E', () => {
   jest.setTimeout(8 * 60 * 1000);
@@ -27,7 +29,7 @@ describeReal('real local backend E2E', () => {
     });
     const payload = await response.json();
     if (response.status !== expected) {
-      throw new Error(`${name}: expected ${expected}, received ${response.status}: ${JSON.stringify(payload)}`);
+      throw new Error(`${name}: expected ${expected}, received ${response.status}: ${payload.code || "unknown error"}`);
     }
     console.log(JSON.stringify({ check: name, status: response.status, result: 'passed' }));
     return payload;
@@ -38,6 +40,21 @@ describeReal('real local backend E2E', () => {
     const form = new FormData();
     form.append(field, new Blob([data], { type: filename.endsWith('.png') ? 'image/png' : 'image/jpeg' }), filename);
     return form;
+  };
+
+  const verifyImage = async (name, imageUrl, filename) => {
+    expect(new URL(imageUrl).protocol).toBe('https:');
+    const response = await fetch(imageUrl);
+    expect(response.status).toBe(200);
+    const digest = (data) => createHash('sha256').update(data).digest('hex');
+    const received = digest(Buffer.from(await response.arrayBuffer()));
+    expect(received).toBe(digest(await fs.readFile(path.join(__dirname, '..', filename))));
+    console.log(JSON.stringify({ check: name, status: response.status, result: 'passed' }));
+  };
+  const verifyDeletedImage = async (name, imageUrl) => {
+    const response = await fetch(imageUrl);
+    expect(response.status).toBe(404);
+    console.log(JSON.stringify({ check: name, status: response.status, result: 'passed' }));
   };
 
   beforeAll(async () => {
@@ -52,9 +69,6 @@ describeReal('real local backend E2E', () => {
         PORT: '0',
         MONGODB_URI: mongo.getUri(),
         JWT_SECRET: 'real-local-e2e-secret-with-at-least-32-characters',
-        AI_TEXT_MODEL: 'qwen3.7-flash',
-        AI_VISION_MODEL: 'qwen3-vl-plus',
-        AI_OCR_MODEL: 'qwen-vl-ocr-latest',
         OSS_PRODUCT_IMAGES_PUBLIC: 'false'
       }
     });
@@ -96,6 +110,7 @@ describeReal('real local backend E2E', () => {
     cleanupPassword = password;
     let userId;
     const productIds = [];
+    const productImageUrls = new Map();
     let conflictId;
     let planId;
     let analysisId;
@@ -136,14 +151,17 @@ describeReal('real local backend E2E', () => {
       }, 201);
       const productId = created.data.product._id;
       productIds.push(productId);
-      await call(`upload product image ${name}`, `/api/products/${productId}/upload-image`, {
+      const uploaded = await call(`upload product image ${name}`, `/api/products/${productId}/upload-image`, {
         method: 'POST', form: await imageForm('productImage', 'product.png')
       });
+      productImageUrls.set(productId, uploaded.data.imageUrl);
+      await verifyImage(`product image bytes ${name}`, uploaded.data.imageUrl, 'product.png');
       const extracted = await call(`real OCR ${name}`, `/api/products/${productId}/extract-ingredients`, {
         method: 'POST', body: {}
       });
       expect(extracted.data.ingredients.length).toBeGreaterThan(5);
       expect(extracted.data.ingredients).toContain('1,3-丙二醇');
+      expect(extracted.data.analysisConfig.model).toBe(runtime.config.ai.ocrModel);
     }
 
     await call('rename comparison product', `/api/products/${productIds[1]}`, {
@@ -154,6 +172,16 @@ describeReal('real local backend E2E', () => {
       method: 'POST', body: {}
     });
     expect(ingredient.data.ingredientAnalysis.safetyIndex).toEqual(expect.any(Number));
+    const expectedBudget = runtime.config.ai.ingredientThinkingBudget;
+    if (/^qwen3\.7-flash(?:-\d{4}-\d{2}-\d{2})?$/.test(runtime.config.ai.textModel) && expectedBudget) {
+      expect(ingredient.data.analysisConfig.thinkingEnabled).toBe(true);
+      expect(ingredient.data.analysisConfig.thinkingBudget).toBe(expectedBudget);
+      expect(ingredient.data.analysisConfig.usage.reasoningTokens).toBeGreaterThan(0);
+      expect(ingredient.data.analysisConfig.usage.reasoningTokens).toBeLessThanOrEqual(expectedBudget);
+    }
+    const ingredientReadback = await call('read back complete ingredient report', `/api/products/${productIds[0]}/ingredient-analysis`);
+    expect(ingredientReadback.data.ingredientAnalysis).toEqual(ingredient.data.ingredientAnalysis);
+    expect(ingredientReadback.data.product.ingredientAnalysisConfig).toEqual(ingredient.data.analysisConfig);
 
     const conflict = await call('real conflict analysis', '/api/conflicts', {
       method: 'POST', body: { productIds }
@@ -169,14 +197,39 @@ describeReal('real local backend E2E', () => {
     expect(plan.data.plan.morning.length).toBeGreaterThan(0);
     expect(plan.data.plan.evening.length).toBeGreaterThan(0);
 
-    const skin = await call('real skin analysis', '/api/skin-analysis/analyze', {
+    const inactive = await call('generation keeps active plan empty', '/api/plans/active');
+    expect(inactive.data.plan).toBeNull();
+    const active = await call('adopt generated plan', '/api/plans/active', {
+      method: 'PUT', body: { planId }
+    });
+    expect(active.data.plan._id).toBe(planId);
+    const dailyInput = { date: '2026-09-09', timezone: 'Asia/Shanghai', period: 'morning',
+      step: plan.data.plan.morning[0].step, completed: true };
+    await call('complete daily step', `/api/plans/${planId}/daily/steps`, { method: 'PUT', body: dailyInput });
+    const repeated = await call('repeat daily step idempotently', `/api/plans/${planId}/daily/steps`, { method: 'PUT', body: dailyInput });
+    expect(repeated.data.daily.completedCount).toBe(1);
+    const nextDay = await call('next day starts empty', `/api/plans/${planId}/daily?date=2026-09-10&timezone=Asia%2FShanghai`);
+    expect(nextDay.data.daily.completedCount).toBe(0);
+    const opening = await call('persist opening status', `/api/products/${productIds[0]}`, {
+      method: 'PUT', body: { openingStatus: 'unopened' }
+    });
+    expect(opening.data.product.openingStatus).toBe('unopened');
+
+    const skin = await call('real skin analysis' , '/api/skin-analysis/analyze', {
       method: 'POST', form: await imageForm('faceImage', 'face.jpg')
     }, 201);
     analysisId = skin.data.analysisId;
     expect(skin.data.overallAssessment.healthScore).toEqual(expect.any(Number));
-    expect(skin.data.analysisConfig.model).toBe('qwen3-vl-plus');
+    expect(skin.data.analysisConfig.model).toBe(runtime.config.ai.visionModel);
+    await verifyImage('face image bytes', skin.data.imageUrl, 'face.jpg');
 
-    const latest = await call('latest skin analysis', '/api/skin-analysis/latest');
+    const annotation = await call('persist skin context', `/api/skin-analysis/${analysisId}/context`, {
+      method: 'PATCH', body: { condition: '洁面后', light: '自然光', feelings: ['紧绷'] }
+    });
+    expect(annotation.data.analysis.context.feelings).toEqual(['紧绷']);
+    expect(annotation.data.analysis.overallAssessment.healthScore).toBe(skin.data.overallAssessment.healthScore);
+
+    const latest = await call('latest skin analysis' , '/api/skin-analysis/latest');
     expect(latest.data.analysis._id).toBe(analysisId);
     const skinStats = await call('skin stats', '/api/skin-analysis/stats');
     expect(skinStats.data.stats.totalAnalyses).toBe(1);
@@ -190,8 +243,10 @@ describeReal('real local backend E2E', () => {
     await call('delete conflict', `/api/conflicts/${conflictId}`, { method: 'DELETE' });
     await call('delete plan', `/api/plans/${planId}`, { method: 'DELETE' });
     await call('delete skin analysis and OSS object', `/api/skin-analysis/${analysisId}`, { method: 'DELETE' });
+    await verifyDeletedImage('face object deleted', skin.data.imageUrl);
     for (const productId of productIds) {
       await call('delete product and OSS object', `/api/products/${productId}`, { method: 'DELETE' });
+      await verifyDeletedImage('product object deleted', productImageUrls.get(productId));
     }
 
     const oldToken = token;

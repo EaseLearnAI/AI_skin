@@ -13,6 +13,9 @@ const { createAppleTokenVerifier } = require('./providers/apple/appleTokenVerifi
 const { createAppleOAuthClient } = require('./providers/apple/appleOAuthClient');
 const { createAliOssClient, createObjectStorageProvider } = require('./providers/storage/objectStorage');
 const { createPasswordResetSender } = require('./providers/sms/passwordResetSender');
+const { createAlipayProvider } = require('./providers/payment/alipayProvider');
+const { createPaymentService } = require('./services/payment.service');
+const PaymentOrder = require('./models/paymentOrder.model');
 
 const createRuntime = ({
   env = process.env,
@@ -46,9 +49,11 @@ const createRuntime = ({
     refreshTokenEncryptionKey: config.apple.refreshTokenEncryptionKey,
     accountDeletionService
   });
-  const services = createDomainServices({ aiProvider, storageProvider });
+  const services = createDomainServices({ aiProvider, storageProvider, logger });
+  const alipayProvider = overrides.alipayProvider || createAlipayProvider(config.payment.alipay);
+  const paymentService = createPaymentService({ alipayProvider, products: config.payment.products });
   const app = createApp({
-    router: createApiRouter({ authService, ...services }),
+    router: createApiRouter({ authService, ...services, paymentService }),
     readinessCheck: async () => mongooseClient.connection.readyState === 1,
     logger
   });
@@ -59,10 +64,13 @@ const createRuntime = ({
     if (started) return server;
     await mongooseClient.connect(config.mongoURI);
     try {
+      // Purchase idempotency is an indexed database guarantee, including the
+      // first request after a fresh deployment.
+      if (config.payment.alipay.enabled) await PaymentOrder.init();
       await new Promise((resolve, reject) => {
         const onError = (error) => reject(error);
         if (typeof server.once === 'function') server.once('error', onError);
-        server.listen(config.port, '127.0.0.1', () => {
+        server.listen(config.port, config.host, () => {
           if (typeof server.off === 'function') server.off('error', onError);
           started = true;
           resolve();

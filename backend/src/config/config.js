@@ -1,3 +1,4 @@
+const { loadPaymentConfig } = require('./payment');
 const DEFAULT_AI_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
 const INSECURE_JWT_SECRETS = new Set([
   '',
@@ -8,6 +9,15 @@ const INSECURE_JWT_SECRETS = new Set([
 const integer = (value, fallback) => {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const ingredientThinkingBudget = (value) => {
+  if (value === 'default') return undefined;
+  if (value === undefined) return 2048;
+  if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value))) {
+    throw new Error('AI_INGREDIENT_THINKING_BUDGET must be a positive integer or default');
+  }
+  return Number(value);
 };
 
 const loadConfig = (env = process.env) => {
@@ -47,8 +57,10 @@ const loadConfig = (env = process.env) => {
   );
   return Object.freeze({
     nodeEnv,
+    host: env.BIND_HOST || '127.0.0.1',
     port: integer(env.PORT, 5000),
     mongoURI,
+    payment: loadPaymentConfig(env),
     jwt: Object.freeze({
       secret: jwtSecret,
       expiresIn: env.JWT_EXPIRES_IN || '7d'
@@ -59,6 +71,7 @@ const loadConfig = (env = process.env) => {
       textModel: env.AI_TEXT_MODEL || 'qwen3.7-flash',
       visionModel: env.AI_VISION_MODEL || 'qwen3-vl-plus',
       ocrModel: env.AI_OCR_MODEL || 'qwen-vl-ocr-latest',
+      ingredientThinkingBudget: ingredientThinkingBudget(env.AI_INGREDIENT_THINKING_BUDGET),
       timeoutMs: integer(env.AI_TIMEOUT_MS, 100000)
     }),
     apple: Object.freeze({

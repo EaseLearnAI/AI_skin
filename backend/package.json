@@ -11,7 +11,8 @@
     "test:contract": "jest tests/contract --runInBand",
     "test:integration": "jest tests/integration --runInBand --detectOpenHandles",
     "test:e2e:real": "RUN_REAL_E2E=1 jest tests/e2e/realLocal.e2e.test.js --runInBand --detectOpenHandles",
-    "check": "node --check server.js && node --check src/index.js"
+    "check": "node --check server.js && node --check src/index.js",
+    "payment:check-sandbox": "node -- scripts/check-alipay-sandbox.js"
   },
   "keywords": [
     "ai",
@@ -23,6 +24,7 @@
   "license": "ISC",
   "dependencies": {
     "ali-oss": "^6.23.0",
+    "alipay-sdk": "4.14.0",
     "axios": "^1.19.0",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
@@ -49,5 +51,10 @@
     "testMatch": [
       "**/tests/**/*.test.js"
     ]
+  },
+  "overrides": {
+    "alipay-sdk": {
+      "urllib": "4.9.1"
+    }
   }
 }

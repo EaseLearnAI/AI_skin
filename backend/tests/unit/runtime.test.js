@@ -1,3 +1,4 @@
+const request = require('supertest');
 const { createRuntime } = require('../../src');
 
 describe('server lifecycle', () => {
@@ -38,6 +39,31 @@ describe('server lifecycle', () => {
 
     await expect(runtime.start()).rejects.toThrow('database unavailable');
     expect(httpServer.listen).not.toHaveBeenCalled();
+  });
+
+  test('serves HTTP on all IPv4 interfaces when LAN access is explicitly configured', async () => {
+    const mongooseClient = {
+      connection: { readyState: 0 },
+      connect: jest.fn(async () => { mongooseClient.connection.readyState = 1; }),
+      disconnect: jest.fn(async () => { mongooseClient.connection.readyState = 0; })
+    };
+    const runtime = createRuntime({
+      env: { ...env, PORT: '0', BIND_HOST: '0.0.0.0' },
+      mongooseClient,
+      overrides: { logger: { info: jest.fn(), error: jest.fn() } }
+    });
+
+    try {
+      await runtime.start();
+      const address = runtime.server.address();
+      expect(address.address).toBe('0.0.0.0');
+      const response = await request(`http://127.0.0.1:${address.port}`).get('/health');
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ success: true, status: 'ok' });
+    } finally {
+      await runtime.stop();
+    }
+    expect(mongooseClient.disconnect).toHaveBeenCalledTimes(1);
   });
 
   test('disconnects the database when the HTTP listener cannot start', async () => {

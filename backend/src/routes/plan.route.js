@@ -6,6 +6,17 @@ const { createProtect } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validate');
 const { wrap, objectId, envelope } = require('./helpers');
 
+const calendarDate = Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).custom((value, helpers) => {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+    ? value : helpers.error('any.invalid');
+});
+const timezone = Joi.string().max(100).custom((value, helpers) => {
+  try { return new Intl.DateTimeFormat('en-US', { timeZone: value }).resolvedOptions().timeZone; }
+  catch { return helpers.error('any.invalid'); }
+});
+const dayFields = { date: calendarDate.required(), timezone: timezone.required() };
+
 const routine = Joi.object({
   step: Joi.number().integer().min(1),
   product: Joi.string().allow(''),
@@ -27,7 +38,19 @@ const createPlanRouter = ({ authService, planService }) => {
       customRequirements: Joi.string().allow('').max(3000)
     }) })), wrap(controller.generate))
     .get(wrap(controller.list));
-  router.post('/custom', validate(envelope({ body: Joi.object({
+  router.route('/active')
+    .get(wrap(controller.getActive))
+    .put(validate(envelope({ body: Joi.object({ planId: objectId.allow(null).required() }) })), wrap(controller.setActive));
+  router.get('/:id/daily', validate(envelope({
+    params: Joi.object({ id: objectId.required() }), query: Joi.object(dayFields)
+  })), wrap(controller.getDaily));
+  router.put('/:id/daily/steps', validate(envelope({
+    params: Joi.object({ id: objectId.required() }), body: Joi.object({ ...dayFields,
+      period: Joi.string().valid('morning', 'evening').required(),
+      step: Joi.number().integer().min(1).required(), completed: Joi.boolean().required()
+    })
+  })), wrap(controller.updateDailyStep));
+  router.post('/custom' , validate(envelope({ body: Joi.object({
     name: Joi.string().trim().max(200).required(),
     morning: Joi.array().items(routine).required(),
     evening: Joi.array().items(routine).required(),

@@ -1,3 +1,4 @@
+const { conflictReport } = require('../fixtures/conflictReport');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const fs = require('fs/promises');
 
@@ -120,14 +121,7 @@ describe('real local HTTP runtime smoke', () => {
             overallRating: 4.6,
             summary: '温和保湿精华'
           }),
-          analyzeConflict: async () => ({
-            conflicts: [],
-            safeCombo: [{ components: ['烟酰胺', '透明质酸'], description: '可搭配' }],
-            recommendations: {
-              productPairings: { cannotUseTogether: [], canUseTogether: [] },
-              routines: { morning: ['产品一'], evening: ['产品二'] }
-            }
-          }),
+          analyzeConflict: async ({ products }) => conflictReport(products),
           generatePlan: async () => ({
             name: '运行时护肤方案',
             morning: [{ step: 1, product: '产品一', reason: '保湿' }],

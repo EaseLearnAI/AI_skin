@@ -1,6 +1,6 @@
 const createSkinAnalysisController = (service) => ({
   analyze: async (req, res) => {
-    const analysis = await service.analyze(req.user._id, req.file);
+    const analysis = await service.analyze(req.user._id, req.file, req.id);
     res.status(201).json({
       success: true,
       message: '皮肤状态分析完成',
@@ -13,7 +13,14 @@ const createSkinAnalysisController = (service) => ({
         pores: analysis.pores,
         otherIssues: analysis.otherIssues,
         overallAssessment: analysis.overallAssessment,
-        analysisConfig: analysis.analysisConfig
+        analysisConfig: analysis.analysisConfig,
+        context: analysis.context,
+        createdAt: analysis.createdAt,
+        updatedAt: analysis.updatedAt,
+        moisture: analysis.moisture,
+        glossiness: analysis.glossiness,
+        elasticity: analysis.elasticity,
+        problemAreaScore: analysis.problemAreaScore
       }
     });
   },
@@ -23,6 +30,10 @@ const createSkinAnalysisController = (service) => ({
   },
   get: async (req, res) => {
     const analysis = await service.get(req.user._id, req.params.id);
+    res.status(200).json({ success: true, data: { analysis } });
+  },
+  updateContext: async (req, res) => {
+    const analysis = await service.updateContext(req.user._id, req.params.id, req.body);
     res.status(200).json({ success: true, data: { analysis } });
   },
   latest: async (req, res) => {

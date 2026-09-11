@@ -1,3 +1,4 @@
+const { conflictReport } = require('../fixtures/conflictReport');
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
@@ -36,12 +37,13 @@ describe('authenticated business flows', () => {
   let userA;
   let userB;
   let storageProvider;
+  let aiProvider;
 
   beforeAll(async () => {
     mongo = await MongoMemoryServer.create();
     await mongoose.connect(mongo.getUri());
 
-    const aiProvider = {
+    aiProvider = {
       extractProductInfo: async () => ({ productName: '测试精华', ingredients: ['烟酰胺', '透明质酸'], rawContent: '{}' }),
       analyzeIngredients: async () => ({
         safetyIndex: 92,
@@ -56,27 +58,20 @@ describe('authenticated business flows', () => {
         overallRating: 4.6,
         summary: '温和保湿精华'
       }),
-      analyzeConflict: async () => ({
-        conflicts: [],
-        safeCombo: [{ components: ['烟酰胺', '透明质酸'], description: '可搭配' }],
-        recommendations: {
-          productPairings: { cannotUseTogether: [], canUseTogether: [] },
-          routines: { morning: ['测试精华'], evening: ['测试乳霜'] }
-        }
-      }),
-      generatePlan: async () => ({
+      analyzeConflict: jest.fn(async ({ products }) => conflictReport(products)),
+      generatePlan: jest.fn(async () => ({
         name: '轻量护肤方案',
         morning: [{ step: 1, product: '测试精华', reason: '保湿' }],
         evening: [{ step: 1, product: '测试乳霜', reason: '修护' }],
         recommendations: ['每日防晒'],
         skinAnalysisSummary: '混合性皮肤，注意温和护理'
-      }),
-      analyzeSkin: async () => ({
+      })),
+      analyzeSkin: jest.fn(async () => ({
         data: validSkinAnalysis,
         rawContent: JSON.stringify(validSkinAnalysis),
         processingTime: 123,
         model: 'qwen3-vl-plus'
-      })
+      }))
     };
     storageProvider = {
       uploadProductImage: jest.fn(async () => ({ key: 'products/product.jpg', url: 'https://cdn.example/product.jpg' })),
@@ -113,6 +108,7 @@ describe('authenticated business flows', () => {
         password: 'password123',
         gender: 'female'
       });
+      if (response.status !== 201) throw new Error(`Registration fixture failed: ${response.status} ${response.body.code || ''} ${response.body.message || ''}`);
       return { id: response.body.data.user._id, token: response.body.token };
     };
     userA = await createUser('13900000101', '用户A');
@@ -192,6 +188,22 @@ describe('authenticated business flows', () => {
     expect(missing.status).toBe(404);
   });
 
+  test('stops after two invalid outputs without saving a successful report', async () => {
+    const products = await Product.create([
+      { name: '验证产品A', ingredients: ['水'], createdBy: userA.id },
+      { name: '验证产品B', ingredients: ['甘油'], createdBy: userA.id }
+    ]);
+    const before = await request(app).get('/api/conflicts').set(auth(userA.token));
+    const countBefore = aiProvider.analyzeConflict.mock.calls.length;
+    aiProvider.analyzeConflict.mockResolvedValueOnce({}).mockResolvedValueOnce({});
+    const response = await request(app).post('/api/conflicts').set(auth(userA.token))
+      .send({ productIds: products.map((p) => String(p._id)) });
+    expect(response.status).toBe(502);
+    expect(aiProvider.analyzeConflict.mock.calls.length - countBefore).toBe(2);
+    const after = await request(app).get('/api/conflicts').set(auth(userA.token));
+    expect(after.body.count).toBe(before.body.count);
+  });
+
   test('analyzes product conflicts and scopes every summary/detail route to the current user', async () => {
     const first = await createProduct('测试精华');
     const second = await createProduct('测试乳霜');
@@ -204,7 +216,13 @@ describe('authenticated business flows', () => {
         .attach('productImage', image, { filename: `${id}.jpg`, contentType: 'image/jpeg' });
       await request(app).post(`/api/products/${id}/extract-ingredients`).set(auth(userA.token)).send({});
     }
-    const analyzed = await request(app).post('/api/conflicts').set(auth(userA.token)).send({ productIds: ids });
+    const callsBefore = aiProvider.analyzeConflict.mock.calls.length;
+    aiProvider.analyzeConflict.mockResolvedValueOnce({ riskScore: null });
+    const analyzed = await request(app).post('/api/conflicts').set(auth(userA.token))
+      .set('X-Request-ID', 'conflict-workflow-trace').send({ productIds: ids });
+    expect(aiProvider.analyzeConflict).toHaveBeenLastCalledWith(expect.objectContaining({ requestId: 'conflict-workflow-trace' }));
+    expect(aiProvider.analyzeConflict.mock.calls.length - callsBefore).toBe(2);
+    expect(aiProvider.analyzeConflict.mock.calls.at(-1)[0].validationFeedback).toContain('40字');
     const conflictId = analyzed.body.data.conflictId;
     const ownDetail = await request(app).get(`/api/conflicts/detail/${conflictId}`).set(auth(userA.token));
     const iosDetail = await request(app).get(`/api/conflicts/${conflictId}`).set(auth(userA.token));
@@ -219,6 +237,13 @@ describe('authenticated business flows', () => {
     expect(ownDetail.status).toBe(200);
     expect(iosDetail.status).toBe(200);
     expect(iosDetail.body.data.conflict._id).toBe(conflictId);
+    expect(analyzed.body.data.riskScore).toBe(1);
+    expect(analyzed.body.data.safeCombo).toBeUndefined();
+    expect(analyzed.body.data.recommendations.routines).toBeUndefined();
+    expect(iosDetail.body.data.conflict.riskScore).toBe(analyzed.body.data.riskScore);
+    expect(iosDetail.body.data.conflict.productPairs).toEqual(analyzed.body.data.productPairs);
+    expect(iosDetail.body.data.conflict.recommendations).toEqual(analyzed.body.data.recommendations);
+    expect(list.body.data.conflicts[0].productPairs).toEqual(analyzed.body.data.productPairs);
     expect(ownDetail.body.data.conflict.products[0].imageUrl).toBe('signed://fresh/products/product.jpg');
     expect(ownDetail.body.data.conflict.products[0].storageKey).toBeUndefined();
     expect(foreignDetail.status).toBe(404);
@@ -275,11 +300,26 @@ describe('authenticated business flows', () => {
     expect(storageProvider.deleteObject).toHaveBeenCalledWith('faces/private-face.jpg');
   });
 
+  test('deletes the uploaded private face object when AI analysis fails', async () => {
+    aiProvider.analyzeSkin.mockRejectedValueOnce(new Error('vision provider failed'));
+    const image = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+
+    const analyzed = await request(app)
+      .post('/api/skin-analysis/analyze')
+      .set(auth(userA.token))
+      .attach('faceImage', image, { filename: 'face.jpg', contentType: 'image/jpeg' });
+
+    expect(analyzed.status).toBe(500);
+    expect(storageProvider.deleteObject).toHaveBeenCalledWith('faces/private-face.jpg');
+    expect(await SkinAnalysis.countDocuments({ createdBy: userA.id })).toBe(0);
+  });
+
   test('generates, customizes, updates and deletes plans with the current iOS contract', async () => {
     await createProduct('测试精华');
-    const generated = await request(app).post('/api/plans').set(auth(userA.token)).send({
+    const generated = await request(app).post('/api/plans').set(auth(userA.token)).set('X-Request-ID', 'plan-workflow-trace').send({
       requirement: '保湿', userAge: 28, skinConcerns: ['干燥']
     });
+    expect(aiProvider.generatePlan).toHaveBeenLastCalledWith(expect.objectContaining({ requestId: 'plan-workflow-trace' }));
     const planId = generated.body.data.plan._id;
     const updated = await request(app).patch(`/api/plans/${planId}/step`).set(auth(userA.token)).send({
       period: 'morning', step: 1, completed: true
@@ -358,4 +398,21 @@ describe('authenticated business flows', () => {
     expect(invalidFace.body.code).toBe('INVALID_IMAGE');
     expect(unauthenticated.status).toBe(401);
   });
+  test('replacing a product image clears previous OCR and AI report instead of pairing stale analysis with a new photo', async () => {
+    const created = await createProduct('旧图产品');
+    const id = created.body.data.product._id;
+    const upload = () => request(app).post(`/api/products/${id}/upload-image`).set(auth(userA.token))
+      .attach('productImage', Buffer.from([0xff, 0xd8, 0xff, 0xe0]), { filename: 'replacement.jpg', contentType: 'image/jpeg' });
+    await upload();
+    await request(app).post(`/api/products/${id}/extract-ingredients`).set(auth(userA.token)).send({});
+    await request(app).post(`/api/products/${id}/analyze-ingredients`).set(auth(userA.token)).send({});
+    expect((await request(app).get(`/api/products/${id}/ingredient-analysis`).set(auth(userA.token))).status).toBe(200);
+    await upload();
+    const detail = await request(app).get(`/api/products/${id}`).set(auth(userA.token));
+    expect(detail.body.data.product.ingredients).toEqual([]);
+    expect(detail.body.data.product.ingredientAnalysis).toBeNull();
+    expect(detail.body.data.product.description).toBe('');
+    expect((await request(app).get(`/api/products/${id}/ingredient-analysis`).set(auth(userA.token))).status).toBe(404);
+  });
+
 });

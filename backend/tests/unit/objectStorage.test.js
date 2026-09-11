@@ -1,4 +1,4 @@
-const { createObjectStorageProvider } = require('../../src/providers/storage/objectStorage');
+const { createAliOssClient, createObjectStorageProvider } = require('../../src/providers/storage/objectStorage');
 
 describe('object storage privacy boundaries', () => {
   const file = { path: '/tmp/test-image.jpg', originalname: 'face.jpg' };
@@ -80,4 +80,16 @@ describe('object storage privacy boundaries', () => {
 
     expect(client.delete).toHaveBeenCalledWith('faces/private.jpg');
   });
+  test('configures the real OSS SDK for HTTPS and signs private images over TLS', () => {
+    const client = createAliOssClient({ configured: true, region: 'oss-cn-beijing',
+      accessKeyId: 'test-access-key', accessKeySecret: 'test-secret', bucket: 'aiskin-test' });
+    expect(client.options.secure).toBe(true);
+    const provider = createObjectStorageProvider({ client });
+    expect(new URL(provider.getPrivateUrl('faces/example.jpg')).protocol).toBe('https:');
+    expect(new URL(provider.getProductUrl('products/example.jpg', 'http://old.example/image')).protocol).toBe('https:');
+    const publicProvider = createObjectStorageProvider({ client, productImagesPublic: true });
+    expect(publicProvider.getProductUrl('products/example.jpg', 'http://public.example/image'))
+      .toBe('https://public.example/image');
+  });
+
 });

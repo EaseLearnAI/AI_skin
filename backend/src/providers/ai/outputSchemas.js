@@ -1,5 +1,11 @@
 const Joi = require('joi');
 
+const reportText = (max) => Joi.string().trim().min(1).max(max)
+  .pattern(/[\u0000-\u001f\u007f\uFFFD]|\\(?:[nrt]|u[\da-fA-F]{4})|```|<\/?[A-Za-z][^>]*>|^\s*[\[{]/u, { invert: true });
+
+const ingredientReadingItems = () => Joi.array().min(1).max(3)
+  .items(reportText(55).pattern(/^[^：:]{1,12}：.{1,42}$/u));
+
 const routine = Joi.object({
   step: Joi.number().integer().min(1).required(),
   product: Joi.string().required(),
@@ -22,33 +28,20 @@ const schemas = {
     acneRisk: risk.required(),
     irritationRisk: risk.required(),
     allergyRisk: risk.required(),
-    efficacyAnalysis: Joi.array().items(Joi.string()).required(),
-    potentialRisks: Joi.array().items(Joi.string()).required(),
-    recommendations: Joi.array().items(Joi.string()).required(),
+    efficacyAnalysis: ingredientReadingItems().required(),
+    potentialRisks: ingredientReadingItems().required(),
+    recommendations: ingredientReadingItems().required(),
     overallRating: Joi.number().min(0).max(5).required(),
-    summary: Joi.string().min(1).required()
+    summary: reportText(60).required()
   }),
   conflict: Joi.object({
-    conflicts: Joi.array().items(Joi.object({
-      components: Joi.array().items(Joi.string()).required(),
-      severity: Joi.string().valid('高', '中', '低').required(),
-      description: Joi.string().required(),
-      effects: Joi.array().items(Joi.string()).default([])
-    })).required(),
-    safeCombo: Joi.array().items(Joi.object({
-      components: Joi.array().items(Joi.string()).required(),
-      description: Joi.string().required()
-    })).required(),
-    recommendations: Joi.object({
-      productPairings: Joi.object({
-        cannotUseTogether: Joi.array().items(Joi.object({ products: Joi.array().items(Joi.string()), reason: Joi.string().allow('') })).required(),
-        canUseTogether: Joi.array().items(Joi.object({ products: Joi.array().items(Joi.string()), reason: Joi.string().allow('') })).required()
-      }).required(),
-      routines: Joi.object({
-        morning: Joi.array().items(Joi.string()).required(),
-        evening: Joi.array().items(Joi.string()).required()
-      }).required()
-    }).required()
+    riskScore: Joi.number().min(0).max(5).allow(null).required(),
+    summary: reportText(60).required(),
+    productPairs: Joi.array().min(1).items(Joi.object({
+      productIds: Joi.array().length(2).unique().items(Joi.string().required()).required(),
+      status: Joi.string().valid('compatible', 'caution', 'avoid', 'unknown').required(),
+      explanation: reportText(80).required()
+    })).required()
   }),
   plan: Joi.object({
     name: Joi.string().min(1).required(),
@@ -80,7 +73,20 @@ const schemas = {
       severity: Joi.string().valid('正常', '轻度', '中度', '严重').required(),
       distribution: Joi.array().items(Joi.string()).required()
     }).required(),
-    otherIssues: Joi.object().unknown(true).default({}),
+    otherIssues: Joi.object({
+      description: Joi.string().allow(''),
+      redness: Joi.object({ exists: Joi.boolean(), severity: Joi.string().allow(''),
+        distribution: Joi.array().items(Joi.string()), description: Joi.string().allow('') }),
+      hyperpigmentation: Joi.object({ exists: Joi.boolean(), severity: Joi.string().allow(''),
+        types: Joi.array().items(Joi.string()), distribution: Joi.array().items(Joi.string()), description: Joi.string().allow('') }),
+      fineLines: Joi.object({ exists: Joi.boolean(), severity: Joi.string().allow(''),
+        distribution: Joi.array().items(Joi.string()), description: Joi.string().allow('') }),
+      sensitivity: Joi.object({ exists: Joi.boolean(), severity: Joi.string().allow(''),
+        signs: Joi.array().items(Joi.string()), description: Joi.string().allow('') }),
+      skinToneEvenness: Joi.object({ score: Joi.number().integer(), description: Joi.string().allow('') }),
+      observations: Joi.array().items(Joi.object({ category: Joi.string().allow('').required(),
+        details: Joi.array().items(Joi.string().allow('')).required() }))
+    }).default({}),
     overallAssessment: Joi.object({
       healthScore: Joi.number().min(0).max(100).required(),
       summary: Joi.string().min(1).required(),

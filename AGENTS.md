@@ -33,12 +33,13 @@
 
 ## 当前 iOS 前端接口基线
 
-前端生产 Base URL 是 `https://www.lunzo.site/api`。Swift Service 当前共有 38 个唯一的 method/path 契约；其中 `/users/...` 等路径在后端对应 `/api/users/...`。
+前端生产 Base URL 是 `https://www.lunzo.site/api`，Debug Base URL 是 `http://127.0.0.1:5001/api`。截至 2026-09-10，从当前 Swift Service 静态提取并归一化共有 44 个唯一的 method/path 契约；其中 `/users/...` 等路径在后端对应 `/api/users/...`。逐项来源见 [当前 iOS 接口契约](backend/doc/api-contract-20260910.md)，数量变化时应重新从源码核对。
 
 ### 用户与认证
 
 - `POST /api/users/register`：当前页面发送 `name/phone/password/gender`。
 - `POST /api/users/login`：当前页面发送 `phone/password`。
+- `POST /api/users/apple`：当前 Swift 发送 `identityToken/authorizationCode/rawNonce` 及可选姓名，统一处理 Apple 注册与登录。
 - `POST /api/users/password-reset/request`：发送 `phone`。
 - `POST /api/users/password-reset/confirm`：发送 `phone/verificationCode/newPassword`。
 - `GET /api/users/me`。
@@ -64,13 +65,15 @@
 
 - 冲突：`POST|GET /api/conflicts`、`GET|DELETE /api/conflicts/:id`。
 - 方案：`POST|GET /api/plans`、`GET|DELETE /api/plans/:id`、`PATCH /api/plans/:id/step`、`POST /api/plans/custom`。
+- 当前方案：`GET|PUT /api/plans/active`；每日步骤：`GET /api/plans/:id/daily`、`PUT /api/plans/:id/daily/steps`。
 - 肌肤检测：`POST /api/skin-analysis/analyze`，multipart 字段固定为 `faceImage`。
 - 肌肤记录：`GET /api/skin-analysis`、`GET /api/skin-analysis/latest`、`GET /api/skin-analysis/stats`、`GET|DELETE /api/skin-analysis/:id`。
+- 检测备注：`PATCH /api/skin-analysis/:id/context`。
 
 ### 当前不属于前端上线阻塞的接口
 
 - 当前 Swift 页面没有调用 `/api/checkin-plans`、`/api/square`、`/api/ideas`。
-- 当前 Swift 代码没有发起 Apple 登录请求；后端的 `/api/users/apple`、`/api/users/apple/link` 是已实现的预留能力。
+- 当前 Swift 已调用 `/api/users/apple`；`/api/users/apple/link` 是已实现且有集成测试的预留绑定能力，不能因当前页面没有调用而删除。
 - `UserApiService` 的 email 注册/登录重载是遗留兼容代码，当前页面实际使用手机号；未明确恢复邮箱登录前，不扩大首发认证范围。
 - 上述非阻塞能力可以后续逐项补充，但不得因此破坏当前接口基线。
 

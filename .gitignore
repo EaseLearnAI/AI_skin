@@ -24,6 +24,7 @@ logs/
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+backend/storage/
 
 # Uploaded user content
 backend/uploads/**
@@ -37,4 +38,3 @@ backend/uploads/**
 *.swp
 *.swo
 Thumbs.db
-

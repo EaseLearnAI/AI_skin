@@ -8,7 +8,7 @@ const createProductController = (service) => ({
     res.status(200).json({ success: true, message: '产品图片上传成功', data: { imageUrl } });
   },
   extractIngredients: async (req, res) => {
-    const data = await service.extractIngredients(req.user._id, req.params.id);
+    const data = await service.extractIngredients(req.user._id, req.params.id, req.id);
     res.status(200).json({ success: true, message: '产品成分提取成功', data });
   },
   list: async (req, res) => {
@@ -42,7 +42,7 @@ const createProductController = (service) => ({
     res.status(200).json({ success: true, count: products.length, data: { products } });
   },
   analyzeIngredients: async (req, res) => {
-    const data = await service.analyzeIngredients(req.user._id, req.params.id);
+    const data = await service.analyzeIngredients(req.user._id, req.params.id, req.id);
     res.status(200).json({ success: true, message: '产品成分分析成功', data });
   },
   getIngredientAnalysis: async (req, res) => {

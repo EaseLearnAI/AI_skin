@@ -17,7 +17,8 @@ const createProductRouter = ({ authService, productService }) => {
       name: Joi.string().trim().max(200),
       description: Joi.string().allow('').max(5000),
       label: Joi.string().allow('').max(100),
-      openingDate: Joi.date().iso().allow(null)
+      openingDate: Joi.date().iso().allow(null),
+      openingStatus: Joi.string().valid('unknown', 'unopened', 'opened')
     }) })), wrap(controller.create))
     .get(validate(envelope({ query: Joi.object({
       page: Joi.number().integer().min(1).default(1),
@@ -40,7 +41,8 @@ const createProductRouter = ({ authService, productService }) => {
         name: Joi.string().trim().max(200),
         description: Joi.string().allow('').max(5000),
         label: Joi.string().allow('').max(100),
-        openingDate: Joi.date().iso().allow(null)
+        openingDate: Joi.date().iso().allow(null),
+      openingStatus: Joi.string().valid('unknown', 'unopened', 'opened')
       }).min(1)
     })), wrap(controller.update))
     .delete(validate(envelope({ params: Joi.object({ id: objectId.required() }) })), wrap(controller.remove));

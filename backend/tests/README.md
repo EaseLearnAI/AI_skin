@@ -1,68 +1,47 @@
- # AI护肤系统API测试
+# 后端测试入口
 
-本目录包含用于测试AI护肤系统API的自动化测试脚本。
+当前测试由 Jest 统一发现和执行。`package.json` 只匹配 `tests/**/*.test.js`；旧的独立 `node tests/*_test.js` 脚本已移除。它们使用过时的邮箱认证、固定端口和重复流程，不再作为验收入口。
 
-## 测试准备
+## 安装与运行
 
-### 1. 安装依赖
-
-在项目根目录运行：
+在 `backend` 目录使用锁文件安装依赖：
 
 ```bash
-npm install axios form-data
+npm ci
+npm test
+npm run test:unit
+npm run test:contract
+npm run test:integration
+npm run check
 ```
 
-### 2. 准备测试图片
+普通测试不需要先运行 `npm run dev`。单元测试使用注入的配置及依赖；集成测试使用隔离的 `mongodb-memory-server`。`runtimeSmoke` 会在随机 loopback 端口启动自己的 HTTP 运行时，并在完成后关闭。它们不依赖当前本地服务或生产数据库。
 
-在`tests`目录中放置一张名为`product.png`的护肤品图片。
-这张图片应该包含清晰可见的产品名称和成分表，以便OCR能够正确识别。
+未设置 `RUN_REAL_E2E=1` 时，`npm test` 跳过真实外部调用用例；普通集成测试中的 AI、OSS、Apple 和短信使用测试替身。这能验证业务与数据库流程，不能证明真实模型或外部服务正常。
 
-### 3. 启动服务器
+## 覆盖范围
 
-确保MongoDB服务已启动，然后在项目根目录运行：
+| 目录 / 文件 | 作用 |
+| --- | --- |
+| `unit/` | 配置默认值与覆盖、模型输出归一化、Provider、存储、Apple、短信、生命周期 |
+| `contract/app.contract.test.js` | 应用挂载、健康检查和 HTTP 错误约定 |
+| `integration/auth.integration.test.js` | 手机号认证、Apple 登录 / 绑定、密码重置、资料修改和注销 |
+| `integration/businessFlows.integration.test.js` | 产品上传 / OCR / 成分分析、冲突、反馈、肤质、方案、权限和删除 |
+| `integration/prototypeFlows.integration.test.js` | 当前方案、每日步骤、产品开封状态、检测备注、历史兼容 |
+| `integration/analysisIntegrity.integration.test.js` | 图片替换失败回滚、数据完整性、模型溯源和缺失指标 |
+| `integration/runtimeSmoke.integration.test.js` | 真实本地 HTTP listener 与隔离 MongoDB 的核心链路 |
+| `e2e/realLocal.e2e.test.js` | 明确开启后调用真实 DashScope / OSS，并验证实际 HTTP、MongoDB 与清理 |
+
+模型配置只有 `src/config/config.js` 的 `loadConfig` 一处实现；原兼容导出测试已合并进 `unit/config.test.js`，默认值和覆盖行为继续验证。
+
+## 真实外部服务 E2E
+
+真实 E2E 会产生模型调用费用及临时 OSS 对象。运行前需已有授权，并在进程环境或本地 `.env` 中配置 `API_KEY`、`OSS_REGION`、`OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`、`OSS_BUCKET`，不在文档或日志中打印真实值。
 
 ```bash
-npm run dev
+npm run test:e2e:real
 ```
 
-## 运行测试
+仅显式开启真实 E2E 时才读取 `.env`，已有进程环境优先。测试使用 `loadConfig` 的同一份模型配置，不在测试中另设 OCR/文本/视觉模型。该用例自行启动隔离 MongoDB 与随机端口的应用，使用 `tests/product.png` 和 `tests/face.jpg`；这两张图仍是正式 E2E 资源，不能随旧脚本删除。实际读取、持久化及删除断言通过才属于外部链路证据；另会核对三次图片上传的 SHA-256 与原文件一致，并确认删除后的签名 URL 返回 404。Apple 成功授权、实际短信接收和 iOS 原生渲染仍需对应的专项验收。
 
-### 1. 注册测试用户
-
-首先运行以下命令注册测试用户（如果用户已存在会自动跳过）：
-
-```bash
-node tests/register_user.js
-```
-
-### 2. 运行API测试
-
-运行主测试脚本：
-
-```bash
-node tests/api_test.js
-```
-
-## 测试内容
-
-测试脚本包含以下测试内容：
-
-1. 用户登录
-2. 创建产品（无需提供产品名称）
-3. 创建带标签的产品
-4. 上传产品图片
-5. 提取产品成分（OCR）
-6. 分析产品成分（AI）
-7. 获取用户所有产品
-8. 根据标签获取用户产品
-9. 获取单个产品详情
-10. 获取产品成分分析
-11. 更新产品（包括开封日期）
-12. 清理测试数据
-
-## 注意事项
-
-- 测试脚本会自动清理创建的测试数据
-- 所有API请求都会显示详细的请求和响应数据
-- 测试脚本会在出错时中断执行
-- 测试用户为：`abc1567849@gmail.com` / `12345678`
+测试脚本不会自动安装缺失依赖、后台启动长期开发服务或以固定等待时长假定服务就绪。

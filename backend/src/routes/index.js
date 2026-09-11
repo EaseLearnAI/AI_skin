@@ -5,6 +5,7 @@ const { createConflictRouter } = require('./conflict.route');
 const { createIdeaRouter } = require('./idea.route');
 const { createPlanRouter } = require('./plan.route');
 const { createSkinAnalysisRouter } = require('./skinAnalysis.route');
+const { createPaymentRouter } = require('./payment.route');
 
 const createApiRouter = ({
   authService,
@@ -12,10 +13,12 @@ const createApiRouter = ({
   conflictService,
   ideaService,
   planService,
-  skinAnalysisService
+  skinAnalysisService,
+  paymentService
 }) => {
   const router = express.Router();
   router.use('/users', createUserRouter({ authService }));
+  if (paymentService) router.use('/payments', createPaymentRouter({ authService, paymentService }));
   if (productService) router.use('/products', createProductRouter({ authService, productService }));
   if (conflictService) router.use('/conflicts', createConflictRouter({ authService, conflictService }));
   if (ideaService) router.use('/ideas', createIdeaRouter({ authService, ideaService }));

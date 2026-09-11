@@ -184,9 +184,17 @@ const createAuthService = ({
       const refreshToken = decrypt(user.appleRefreshTokenCiphertext, refreshTokenEncryptionKey);
       await appleOAuthClient.revokeRefreshToken(refreshToken);
     }
-    await accountDeletionService.deleteAll(userId);
-    await PasswordResetToken.deleteMany({ phone: user.phone });
-    await User.deleteOne({ _id: userId });
+    // Block already-authenticated concurrent purchase requests before unlinking
+    // billing records. If cleanup fails, the owner can sign in and retry.
+    await User.updateOne({ _id: userId }, { $set: { accountStatus: 'deleting' }, $inc: { tokenVersion: 1 } });
+    try {
+      await accountDeletionService.deleteAll(userId);
+      await PasswordResetToken.deleteMany({ phone: user.phone });
+      await User.deleteOne({ _id: userId });
+    } catch (error) {
+      await User.updateOne({ _id: userId, accountStatus: 'deleting' }, { $set: { accountStatus: 'active' } });
+      throw error;
+    }
   };
 
   return {

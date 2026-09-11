@@ -1,13 +1,15 @@
 const createConflictController = (service) => ({
   analyze: async (req, res) => {
-    const { record, result, products } = await service.analyze(req.user._id, req.body.productIds);
+    const { record, result, products } = await service.analyze(req.user._id, req.body.productIds, req.id);
     res.status(201).json({
       success: true,
       message: '产品冲突分析成功',
       data: {
         conflictId: record._id,
-        conflicts: result.conflicts,
-        safeCombo: result.safeCombo,
+        reportVersion: record.reportVersion,
+        riskScore: result.riskScore,
+        summary: result.summary,
+        productPairs: result.productPairs,
         recommendations: result.recommendations,
         products: products.map((product) => ({
           id: product._id,
